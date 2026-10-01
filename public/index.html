@@ -1,137 +1,240 @@
 <!doctype html>
-<html lang="en">
+<html lang="en" class="no-js">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>jamming.cat</title>
 <meta name="description" content="Run curl {{host}} and a cat jams in your terminal.">
+<meta name="theme-color" content="#f4d2cd" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#2a1b26" media="(prefers-color-scheme: dark)">
 <link rel="icon" href="/catjam.gif" type="image/gif">
+<script>document.documentElement.className = 'js';</script>
 <style>
   :root {
-    --dusk: #262a45;
-    --dusk-deep: #1d2038;
-    --whisker: #3b4066;
-    --fur: #f4efe9;
-    --lilac: #a9add4;
-    --nose: #f0a39b;
-    --mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, Consolas, monospace;
-    --round: ui-rounded, "SF Pro Rounded", "Nunito", "Varela Round", system-ui, sans-serif;
+    color-scheme: light dark;
+
+    /* The page: the cat's ear pink, with plum ink. */
+    --page: #f4d2cd;
+    --ink: #2b1b2f;
+    --ink-soft: #664757;
+    --rule: rgba(43, 27, 47, 0.16);
+
+    /* The terminal: late-night indigo, always dark. */
+    --night: #1f1934;
+    --night-raised: #2a2343;
+    --night-text: #fff6f2;
+    --night-soft: #aaa0c6;
+    --nose: #ff8f9f;
+
+    --mono: "Martian Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+    /* One terminal character column, in CSS pixels. Set by the script to fit. */
+    --cell: 7px;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --page: #2a1b26;
+      --ink: #f6e5e8;
+      --ink-soft: #bba2b3;
+      --rule: rgba(246, 229, 232, 0.14);
+      --night: #141020;
+      --night-raised: #201a33;
+    }
   }
 
   * { box-sizing: border-box; }
 
-  html { background: var(--dusk); color: var(--fur); }
+  html { background: var(--page); color: var(--ink); }
 
   body {
     margin: 0;
-    min-height: 100vh;
-    font: 17px/1.55 var(--round);
-    display: grid;
-    place-items: center;
-    padding: 48px 24px;
+    font: 16px/1.6 var(--sans);
+    -webkit-font-smoothing: antialiased;
   }
 
-  main {
-    width: 100%;
+  .page {
     max-width: 920px;
-    display: grid;
-    grid-template-columns: 280px 1fr;
-    column-gap: 56px;
-    align-items: start;
+    margin: 0 auto;
+    padding: 20px clamp(16px, 4vw, 40px) 56px;
   }
 
-  .cat {
-    width: 280px;
-    height: 280px;
-    image-rendering: pixelated;
-    border-radius: 36px;
-    background: var(--dusk-deep);
+  a { color: inherit; text-underline-offset: 3px; text-decoration-thickness: 1px; }
+  a:hover { text-decoration-thickness: 2px; }
+
+  :focus-visible { outline: 3px solid var(--ink); outline-offset: 3px; border-radius: 4px; }
+
+  code { font-family: var(--mono); font-size: 0.86em; font-weight: 500; }
+
+  /* Header */
+
+  header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 16px;
+    padding: 4px 4px 18px;
   }
 
-  h1 {
+  .wordmark {
     margin: 0;
-    font-size: 1rem;
-    font-weight: 600;
-    color: var(--lilac);
-    letter-spacing: 0.01em;
+    font: 750 1.05rem/1 var(--mono);
+    letter-spacing: -0.02em;
   }
 
-  .run {
-    margin: 12px 0 0;
+  header a { font-size: 0.95rem; color: var(--ink-soft); }
+
+  /* The terminal */
+
+  .term {
+    background: var(--night);
+    color: var(--night-text);
+    border-radius: 24px;
+    overflow: hidden;
+  }
+
+  .term :focus-visible { outline-color: var(--night-text); }
+
+  .prompt {
     display: flex;
     flex-wrap: wrap;
-    align-items: center;
-    gap: 12px 20px;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 14px 24px;
+    padding: clamp(20px, 4vw, 34px) clamp(20px, 4vw, 34px) 0;
   }
 
   .command {
-    font: 600 clamp(2rem, 5.4vw, 3.6rem)/1.1 var(--mono);
-    letter-spacing: -0.02em;
-    overflow-wrap: anywhere;
+    margin: 0;
+    min-width: 0;
+    font: 700 clamp(1.3rem, 0.7rem + 2.7vw, 2.35rem)/1.25 var(--mono);
+    letter-spacing: -0.03em;
   }
 
-  .command::before {
-    content: "$ ";
-    color: var(--nose);
-    user-select: none;
-  }
+  .command code { font: inherit; }
+  .dollar { color: var(--nose); user-select: none; transition: color 120ms; }
+  #path { color: var(--nose); }
 
-  button {
-    font: 600 0.95rem var(--round);
-    color: var(--dusk-deep);
+  .copy {
+    flex: none;
+    margin-top: 0.2em;
+    font: 650 0.9rem/1 var(--mono);
+    color: var(--night);
     background: var(--nose);
     border: 0;
     border-radius: 999px;
-    padding: 9px 20px;
+    padding: 12px 20px;
     cursor: pointer;
   }
 
-  button:hover { background: var(--fur); }
+  .copy:hover { background: var(--night-text); }
 
-  :focus-visible {
-    outline: 3px solid var(--fur);
-    outline-offset: 3px;
+  /* As tall as the selected cat (square pixels, so columns = pixel rows). The
+     cat sits in the bottom-left corner, the way the GIF crops it. */
+  .stage {
+    --size: 48;
+    position: relative;
+    height: calc(var(--cell) * var(--size));
+    margin-top: clamp(12px, 2.4vw, 24px);
+    transition: height 200ms ease-out;
   }
 
-  .lede {
-    margin: 20px 0 0;
-    max-width: 34em;
-    color: var(--lilac);
+  .cat {
+    position: absolute;
+    left: 0;
+    bottom: 0;
+    display: block;
+    image-rendering: pixelated;
   }
 
-  h2 {
-    margin: 48px 0 12px;
-    font-size: 1.15rem;
-    font-weight: 600;
+  img.cat { width: calc(var(--cell) * 48); height: calc(var(--cell) * 48); }
+
+  /* Options, docked like a status line */
+
+  .bar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 26px;
+    padding: 10px clamp(12px, 2.6vw, 22px);
+    background: var(--night-raised);
   }
 
-  dl {
+  .no-js .bar, .no-js .copy { display: none; }
+
+  .group { display: flex; align-items: center; gap: 2px; }
+
+  .group-label {
+    margin-right: 8px;
+    font-size: 0.85rem;
+    color: var(--night-soft);
+  }
+
+  .opt { position: relative; }
+
+  .opt input {
+    position: absolute;
+    inset: 0;
     margin: 0;
+    opacity: 0;
+    cursor: pointer;
+  }
+
+  .opt span {
+    display: block;
+    padding: 7px 11px;
+    border-radius: 9px;
+    font: 500 0.82rem/1.2 var(--mono);
+    color: var(--night-soft);
+    transition: background-color 120ms, color 120ms;
+  }
+
+  .opt:hover span { color: var(--night-text); background: rgba(255, 255, 255, 0.07); }
+  .opt input:checked + span { color: var(--night); background: var(--nose); }
+  .opt input:focus-visible + span { outline: 2px solid var(--night-text); outline-offset: 2px; }
+  .opt input:disabled { cursor: default; }
+  .opt input:disabled + span { opacity: 0.6; }
+
+  .pause {
+    margin-left: auto;
+    font: 500 0.82rem/1.2 var(--mono);
+    color: var(--night-soft);
+    background: none;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 9px;
+    padding: 6px 12px;
+    cursor: pointer;
+  }
+
+  .pause:hover { color: var(--night-text); border-color: rgba(255, 255, 255, 0.4); }
+
+  /* Below the terminal */
+
+  .about { margin: 22px 4px 0; max-width: 62ch; }
+  .lede { margin: 0; font-size: 1.15rem; font-weight: 600; line-height: 1.45; }
+  .desc { margin: 6px 0 0; color: var(--ink-soft); min-height: 3.2em; }
+
+  .notes {
+    margin: 36px 4px 0;
     display: grid;
     grid-template-columns: max-content 1fr;
-    column-gap: 28px;
-    row-gap: 14px;
+    gap: 10px 32px;
   }
 
-  dt {
-    font: 0.95rem/1.55 var(--mono);
-    color: var(--fur);
-  }
-
-  dd {
-    margin: 0;
-    color: var(--lilac);
-  }
+  .notes dt { font-weight: 600; }
+  .notes dd { margin: 0; color: var(--ink-soft); }
+  .notes code { color: var(--ink); }
 
   footer {
-    margin-top: 48px;
-    padding-top: 20px;
-    border-top: 1px solid var(--whisker);
+    margin: 40px 4px 0;
+    padding-top: 16px;
+    border-top: 1px solid var(--rule);
     font-size: 0.9rem;
-    color: var(--lilac);
+    color: var(--ink-soft);
   }
 
-  code { font: 0.9em var(--mono); color: var(--fur); }
+  footer p { margin: 0; }
 
   .visually-hidden {
     position: absolute;
@@ -142,63 +245,709 @@
     white-space: nowrap;
   }
 
-  @media (max-width: 760px) {
-    body { place-items: start; padding-top: 32px; }
-    main { grid-template-columns: 1fr; }
-    .cat { width: 192px; height: 192px; border-radius: 28px; margin-bottom: 28px; }
-    dl { grid-template-columns: 1fr; row-gap: 2px; }
-    dd { margin-bottom: 14px; }
+  @media (max-width: 640px) {
+    .prompt { flex-direction: column; }
+    .bar { gap: 6px 18px; }
+    .pause { margin-left: 0; }
+    .notes { grid-template-columns: 1fr; gap: 2px; }
+    .notes dd { margin-bottom: 12px; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .dollar, .opt span, .stage { transition: none; }
+  }
+</style>
+<style>
+  @font-face {
+    font-family: "Martian Mono";
+    font-style: normal;
+    font-weight: 300 800;
+    font-display: swap;
+    /* Martian Mono by Evil Martians (SIL OFL 1.1), basic Latin subset at 87.5% width. */
+    src: url(data:font/woff2;base64,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) format("woff2");
   }
 </style>
 </head>
 <body>
-<main>
-  <img class="cat" src="/catjam.gif" width="64" height="64" alt="A white cat bobbing its head to music">
+<div class="page" data-host="{{host}}">
+  <header>
+    <p class="wordmark">jamming.cat</p>
+    <a href="https://github.com/fulopmarton/jamming.cat">Source on GitHub</a>
+  </header>
 
-  <div>
-    <h1>jamming.cat</h1>
-    <div class="run">
-      <span class="command" id="command">curl {{host}}</span>
-      <button type="button" id="copy">Copy</button>
-      <span id="status" class="visually-hidden" role="status"></span>
+  <main>
+    <h1 class="visually-hidden">jamming.cat: a cat that jams in your terminal</h1>
+
+    <section class="term" aria-label="Command and preview">
+      <div class="prompt">
+        <p class="command"><span class="dollar" aria-hidden="true">$ </span><code id="command">curl {{host}}<span id="path"></span></code></p>
+        <button type="button" class="copy" id="copy">Copy</button>
+        <span id="status" class="visually-hidden" role="status"></span>
+      </div>
+
+      <div class="stage" id="stage">
+        <img class="cat" id="fallback" src="/catjam.gif" width="64" height="64" alt="A white cat bobbing its head to music">
+      </div>
+
+      <form class="bar" id="options" aria-label="Options">
+        <div class="group" role="radiogroup" aria-labelledby="mode-label">
+          <span class="group-label" id="mode-label">Colors</span>
+          <label class="opt"><input type="radio" name="mode" value="truecolor" checked><span>24-bit</span></label>
+          <label class="opt"><input type="radio" name="mode" value="256"><span>256</span></label>
+          <label class="opt"><input type="radio" name="mode" value="ascii"><span>ascii</span></label>
+        </div>
+        <div class="group">
+          <label class="opt"><input type="checkbox" name="party"><span>party</span></label>
+        </div>
+        <div class="group" role="radiogroup" aria-labelledby="size-label">
+          <span class="group-label" id="size-label">Size</span>
+          <label class="opt"><input type="radio" name="size" value="small"><span>small</span></label>
+          <label class="opt"><input type="radio" name="size" value="medium" checked><span>medium</span></label>
+          <label class="opt"><input type="radio" name="size" value="big"><span>big</span></label>
+        </div>
+        <button type="button" class="pause" id="pause" hidden>Pause</button>
+      </form>
+    </section>
+
+    <div class="about">
+      <p class="lede">Run it in a terminal and the cat jams along until you press Ctrl+C.</p>
+      <p class="desc" id="desc" aria-live="polite">Full 24-bit color, which most modern terminals support. The cat takes up 48 columns and 24 rows.</p>
     </div>
-    <p class="lede">Run it in a terminal and the cat jams along until you press Ctrl+C.</p>
 
-    <h2>Change the look</h2>
-    <dl>
-      <dt>curl {{host}}/party</dt>
-      <dd>Rainbow cat that switches color on every head bob.</dd>
-      <dt>curl {{host}}/256</dt>
-      <dd>Fewer colors, for terminals without 24-bit color support.</dd>
-      <dt>curl {{host}}/ascii</dt>
-      <dd>Plain text characters. Works in any terminal and uses the least data.</dd>
-      <dt>curl {{host}}/small</dt>
-      <dd>32 columns wide. <code>/big</code> is 64. The default is 48, which fits an 80×24 window.</dd>
+    <dl class="notes">
+      <dt>Options</dt>
+      <dd>They're just parts of the address, so you can type them too: <code>/party</code>, <code>/256</code>, <code>/ascii</code>, <code>/small</code>, <code>/big</code>. Combine them like <code>curl {{host}}/party/big</code>.</dd>
+      <dt>Windows PowerShell</dt>
+      <dd>Type <code>curl.exe</code> instead of <code>curl</code>.</dd>
+      <dt>wget or HTTPie</dt>
+      <dd><code>wget -qO- {{host}}<span class="path-echo"></span></code> or <code>http --stream {{host}}<span class="path-echo"></span></code></dd>
     </dl>
-    <p class="lede">Options combine, like <code>curl {{host}}/party/big</code>.</p>
+  </main>
 
-    <footer>
-      On Windows PowerShell, type <code>curl.exe</code> instead of <code>curl</code>.
-      With wget, use <code>wget -qO- {{host}}</code>.
-    </footer>
-  </div>
-</main>
+  <footer>
+    <p>The cat is the catJAM emoji, from <a href="https://emoji.gg/emoji/5498_catJAM">emoji.gg</a>. Inspired by <a href="https://github.com/hugomd/parrot.live">parrot.live</a>.</p>
+  </footer>
+</div>
 
 <script>
-  const button = document.getElementById('copy');
+(() => {
+  const SIZES = { small: 32, medium: 48, big: 64 };
+  const MODES = ['truecolor', '256', 'ascii'];
+  const DEFAULTS = { mode: 'truecolor', size: 'medium', party: false };
+
+  const page = document.querySelector('.page');
+  const host = page.dataset.host;
+  const form = document.getElementById('options');
+  const pathEl = document.getElementById('path');
+  const dollar = document.querySelector('.dollar');
+  const desc = document.getElementById('desc');
+  const stage = document.getElementById('stage');
+  const fallback = document.getElementById('fallback');
+  const pauseButton = document.getElementById('pause');
+  const copyButton = document.getElementById('copy');
   const status = document.getElementById('status');
-  button.addEventListener('click', async () => {
-    const text = document.getElementById('command').textContent;
-    try {
-      await navigator.clipboard.writeText(text);
-      button.textContent = 'Copied';
-      status.textContent = 'Command copied to clipboard';
-    } catch {
-      button.textContent = 'Select and copy it';
-      status.textContent = 'Clipboard access is blocked. Select the command and copy it manually.';
+  const reducedMotion = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // The page is served for any valid option path, so start from the address.
+  const state = parse(location.pathname);
+
+  function parse(pathname) {
+    const options = { ...DEFAULTS };
+    for (const segment of pathname.toLowerCase().split('/')) {
+      if (segment === '') continue;
+      if (segment in SIZES) options.size = segment;
+      else if (MODES.includes(segment)) options.mode = segment;
+      else if (segment === 'party') options.party = true;
+      else return { ...DEFAULTS };
     }
-    setTimeout(() => { button.textContent = 'Copy'; }, 2000);
+    return options;
+  }
+
+  function pathSegments({ mode, size, party }) {
+    const segments = [];
+    if (party && mode !== 'ascii') segments.push('party');
+    if (mode !== 'truecolor') segments.push(mode);
+    if (size !== 'medium') segments.push(size);
+    return segments;
+  }
+
+  function describe({ mode, size, party }) {
+    const color = {
+      truecolor: 'Full 24-bit color, which most modern terminals support.',
+      256: '256 colors, for terminals without 24-bit color support.',
+      ascii: 'Plain text characters in rainbow colors. Works in any terminal and uses the least data.',
+    }[mode];
+    const beat = party && mode !== 'ascii' ? ' It switches color on every head bob.' : '';
+    const columns = SIZES[size];
+    return `${color}${beat} The cat takes up ${columns} columns and ${columns / 2} rows.`;
+  }
+
+  function update(fromUser) {
+    form.elements.mode.value = state.mode;
+    form.elements.size.value = state.size;
+    const party = form.elements.party;
+    party.checked = state.mode === 'ascii' || state.party;
+    party.disabled = state.mode === 'ascii';
+
+    const segments = pathSegments(state);
+    pathEl.replaceChildren(...segments.flatMap((s) => [document.createElement('wbr'), `/${s}`]));
+    const path = segments.map((s) => `/${s}`).join('');
+    for (const echo of document.querySelectorAll('.path-echo')) echo.textContent = path;
+
+    desc.textContent = describe(state);
+    stage.style.setProperty('--size', SIZES[state.size]);
+    if (fromUser) history.replaceState(null, '', path || '/');
+    showVariant();
+  }
+
+  form.addEventListener('change', (event) => {
+    const input = event.target;
+    if (input.name === 'mode') state.mode = input.value;
+    else if (input.name === 'size') state.size = input.value;
+    else if (input.name === 'party') state.party = input.checked;
+    update(true);
   });
+  form.addEventListener('submit', (event) => event.preventDefault());
+
+  copyButton.addEventListener('click', async () => {
+    const command = document.getElementById('command');
+    try {
+      await navigator.clipboard.writeText(command.textContent);
+      copyButton.textContent = 'Copied';
+      status.textContent = 'Command copied';
+    } catch {
+      getSelection().selectAllChildren(command);
+      copyButton.textContent = 'Selected';
+      status.textContent = 'Couldn’t reach the clipboard. The command is selected, so copy it with your keyboard.';
+    }
+    clearTimeout(copyButton.timer);
+    copyButton.timer = setTimeout(() => { copyButton.textContent = 'Copy'; }, 2000);
+  });
+
+  // ---------------------------------------------------------------------------
+  // Live preview. This mirrors lib/gif.js and lib/render.js: the same decoding,
+  // scaling, palettes and beat detection, drawn on a canvas instead of as ANSI.
+  // Half-block cells are two square pixels each, so a pixel grid is exact.
+
+  const PARTY_RGB = [
+    [255, 64, 64], [255, 160, 32], [255, 230, 40], [60, 220, 90],
+    [40, 200, 255], [80, 110, 255], [200, 80, 255], [255, 80, 190],
+  ];
+  // Bright red, yellow, green, cyan, blue, magenta, as a typical dark theme shows them.
+  const PARTY_ANSI = ['#ff6b6b', '#ffe066', '#7ee787', '#7ce8f0', '#7aa5ff', '#f08cff'];
+  const ASCII_RAMP = '.:-=+*#%@';
+
+  const canvas = document.createElement('canvas');
+  canvas.className = 'cat';
+  canvas.setAttribute('role', 'img');
+  canvas.setAttribute('aria-label', 'Preview of the cat as your terminal will draw it');
+  const ctx = canvas.getContext('2d');
+  const scratch = document.createElement('canvas');
+  const scratchCtx = scratch.getContext('2d');
+
+  const cache = new Map();
+  let gif = null;
+  let beats = null;
+  let variant = null;
+  let frameIndex = 0;
+  let cell = 0;
+  let playing = false;
+  let raf = 0;
+  let last = 0;
+  let elapsed = 0;
+
+  pauseButton.addEventListener('click', () => setPlaying(!playing));
+
+  function startPreview() {
+    fetch('/catjam.gif')
+      .then((res) => {
+        if (!res.ok) throw new Error(`GIF request failed with ${res.status}`);
+        return res.arrayBuffer();
+      })
+      .then((buffer) => {
+        gif = decodeGif(new Uint8Array(buffer));
+        beats = beatIndices(gif);
+        return document.fonts ? document.fonts.load('500 16px "Martian Mono"').catch(() => {}) : null;
+      })
+      .then(() => {
+        fallback.replaceWith(canvas);
+        new ResizeObserver(fit).observe(stage);
+        fit();
+        showVariant();
+        pauseButton.hidden = false;
+        setPlaying(!reducedMotion);
+      })
+      .catch(() => {
+        // The plain GIF stays in place, which is still a jamming cat.
+      });
+  }
+
+  function setPlaying(on) {
+    playing = on;
+    pauseButton.textContent = on ? 'Pause' : 'Play';
+    cancelAnimationFrame(raf);
+    last = 0;
+    if (on) raf = requestAnimationFrame(tick);
+  }
+
+  function tick(now) {
+    if (!playing) return;
+    if (last) {
+      elapsed += Math.min(now - last, 250);
+      let advanced = false;
+      while (elapsed >= variant.frames[frameIndex].delay) {
+        elapsed -= variant.frames[frameIndex].delay;
+        frameIndex = (frameIndex + 1) % variant.frames.length;
+        advanced = true;
+      }
+      if (advanced) draw();
+    }
+    last = now;
+    raf = requestAnimationFrame(tick);
+  }
+
+  // Pick a whole number of pixels per column so the cat stays crisp.
+  function fit() {
+    const next = Math.max(2, Math.min(8, Math.floor(stage.clientWidth / 64)));
+    if (next === cell) return;
+    cell = next;
+    document.documentElement.style.setProperty('--cell', `${cell}px`);
+    sizeCanvas();
+  }
+
+  function showVariant() {
+    if (!gif) return;
+    const mode = state.mode;
+    const size = SIZES[state.size];
+    const party = mode === 'ascii' || state.party;
+    const key = `${mode}:${size}:${party}`;
+    if (!cache.has(key)) cache.set(key, renderVariant(mode, size, party));
+    variant = cache.get(key);
+    sizeCanvas();
+  }
+
+  function sizeCanvas() {
+    if (!variant || !cell) return;
+    const cssSize = variant.width * cell;
+    canvas.style.width = `${cssSize}px`;
+    canvas.style.height = `${cssSize}px`;
+    const px = Math.round(cssSize * (window.devicePixelRatio || 1));
+    canvas.width = px;
+    canvas.height = px;
+    if (variant.mode !== 'ascii') {
+      scratch.width = variant.width;
+      scratch.height = variant.height;
+    }
+    draw();
+  }
+
+  function draw() {
+    const frame = variant.frames[frameIndex];
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    if (variant.mode === 'ascii') {
+      const cw = canvas.width / variant.width;
+      const ch = canvas.height / variant.height;
+      ctx.font = `500 ${cw * 1.55}px "Martian Mono", ui-monospace, monospace`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillStyle = frame.accent;
+      frame.lines.forEach((line, y) => {
+        for (let x = 0; x < line.length; x++) {
+          if (line[x] !== ' ') ctx.fillText(line[x], (x + 0.5) * cw, (y + 0.5) * ch);
+        }
+      });
+    } else {
+      scratchCtx.putImageData(frame.image, 0, 0);
+      ctx.imageSmoothingEnabled = false;
+      ctx.drawImage(scratch, 0, 0, canvas.width, canvas.height);
+    }
+
+    dollar.style.color = frame.accent || '';
+  }
+
+  function renderVariant(mode, width, party) {
+    const rows = Math.max(1, Math.round((width * gif.height) / gif.width / 2));
+    const height = mode === 'ascii' ? rows : rows * 2;
+    const scaled = gif.frames.map((f) => resize(f.pixels, gif.width, gif.height, width, height));
+    const rampLut = mode === 'ascii' ? asciiRampLut(scaled) : null;
+
+    const frames = scaled.map((px, i) => {
+      const delay = gif.frames[i].delay;
+      if (mode === 'ascii') {
+        return { delay, lines: asciiLines(px, width, height, rampLut), accent: PARTY_ANSI[beats[i] % PARTY_ANSI.length] };
+      }
+      let accent = null;
+      if (party) {
+        const rgb = PARTY_RGB[beats[i] % PARTY_RGB.length];
+        tint(px, rgb);
+        accent = `rgb(${rgb.join(' ')})`;
+      }
+      const image = new ImageData(width, height);
+      const out = image.data;
+      for (let o = 0; o < px.length; o += 4) {
+        if (px[o + 3] < 128) continue; // terminal background shows through
+        let r = px[o], g = px[o + 1], b = px[o + 2];
+        if (mode === '256') [r, g, b] = XTERM_PALETTE[nearestXterm(r, g, b) - 16];
+        else [r, g, b] = [q5(r), q5(g), q5(b)];
+        out[o] = r;
+        out[o + 1] = g;
+        out[o + 2] = b;
+        out[o + 3] = 255;
+      }
+      return { delay, image, accent };
+    });
+
+    return { mode, width, height, frames };
+  }
+
+  function asciiLines(px, width, height, rampLut) {
+    const lines = [];
+    for (let y = 0; y < height; y++) {
+      let line = '';
+      for (let x = 0; x < width; x++) {
+        const o = (y * width + x) * 4;
+        line += px[o + 3] < 128 ? ' ' : rampLut[Math.round(luminance(px, o))];
+      }
+      lines.push(line);
+    }
+    return lines;
+  }
+
+  // --- From lib/render.js ----------------------------------------------------
+
+  function resize(src, sw, sh, tw, th) {
+    const out = new Uint8Array(tw * th * 4);
+    const n = 4;
+    for (let ty = 0; ty < th; ty++) {
+      for (let tx = 0; tx < tw; tx++) {
+        let r = 0, g = 0, b = 0, a = 0;
+        for (let sy = 0; sy < n; sy++) {
+          const py = Math.min(sh - 1, Math.floor(((ty + (sy + 0.5) / n) * sh) / th));
+          for (let sx = 0; sx < n; sx++) {
+            const px = Math.min(sw - 1, Math.floor(((tx + (sx + 0.5) / n) * sw) / tw));
+            const o = (py * sw + px) * 4;
+            const alpha = src[o + 3];
+            r += src[o] * alpha;
+            g += src[o + 1] * alpha;
+            b += src[o + 2] * alpha;
+            a += alpha;
+          }
+        }
+        const o = (ty * tw + tx) * 4;
+        if (a > 0) {
+          out[o] = Math.round(r / a);
+          out[o + 1] = Math.round(g / a);
+          out[o + 2] = Math.round(b / a);
+        }
+        out[o + 3] = Math.round(a / (n * n));
+      }
+    }
+    return out;
+  }
+
+  function q5(v) { return Math.min(255, (v & 0xf8) + 4); }
+
+  const XTERM_PALETTE = (() => {
+    const cube = [0, 95, 135, 175, 215, 255];
+    const colors = [];
+    for (let i = 0; i < 216; i++) colors.push([cube[Math.floor(i / 36)], cube[Math.floor(i / 6) % 6], cube[i % 6]]);
+    for (let i = 0; i < 24; i++) colors.push([8 + i * 10, 8 + i * 10, 8 + i * 10]);
+    return colors;
+  })();
+
+  const xtermLut = new Int16Array(32768).fill(-1);
+
+  function nearestXterm(r, g, b) {
+    const k = ((r >> 3) << 10) | ((g >> 3) << 5) | (b >> 3);
+    if (xtermLut[k] >= 0) return xtermLut[k];
+    const cr = (r >> 3) * 8 + 4, cg = (g >> 3) * 8 + 4, cb = (b >> 3) * 8 + 4;
+    let best = 0;
+    let bestDist = Infinity;
+    XTERM_PALETTE.forEach(([pr, pg, pb], i) => {
+      const rm = (cr + pr) / 2;
+      const dist = (2 + rm / 256) * (cr - pr) ** 2 + 4 * (cg - pg) ** 2 + (2 + (255 - rm) / 256) * (cb - pb) ** 2;
+      if (dist < bestDist) {
+        bestDist = dist;
+        best = i;
+      }
+    });
+    return (xtermLut[k] = 16 + best);
+  }
+
+  function luminance(px, o) {
+    return 0.299 * px[o] + 0.587 * px[o + 1] + 0.114 * px[o + 2];
+  }
+
+  function asciiRampLut(frames) {
+    const histogram = new Float64Array(256);
+    let total = 0;
+    for (const px of frames) {
+      for (let o = 0; o < px.length; o += 4) {
+        if (px[o + 3] < 128) continue;
+        histogram[Math.round(luminance(px, o))]++;
+        total++;
+      }
+    }
+    const lut = [];
+    let below = 0;
+    for (let l = 0; l < 256; l++) {
+      const rank = total ? below / total : l / 256;
+      lut.push(ASCII_RAMP[Math.min(ASCII_RAMP.length - 1, Math.floor(rank * ASCII_RAMP.length))]);
+      below += histogram[l];
+    }
+    return lut;
+  }
+
+  function tint(px, [tr, tg, tb]) {
+    for (let o = 0; o < px.length; o += 4) {
+      const l = 0.25 + (0.75 * luminance(px, o)) / 255;
+      px[o] = Math.round(px[o] * 0.3 + tr * l * 0.7);
+      px[o + 1] = Math.round(px[o + 1] * 0.3 + tg * l * 0.7);
+      px[o + 2] = Math.round(px[o + 2] * 0.3 + tb * l * 0.7);
+    }
+  }
+
+  function beatIndices({ width, height, frames }) {
+    const centroid = frames.map(({ pixels }) => {
+      let sum = 0;
+      let weight = 0;
+      for (let y = 0; y < height; y++) {
+        for (let x = 0; x < width; x++) {
+          const o = (y * width + x) * 4;
+          if (pixels[o + 3] < 128) continue;
+          const ink = 255 - luminance(pixels, o);
+          sum += y * ink;
+          weight += ink;
+        }
+      }
+      return weight ? sum / weight : 0;
+    });
+
+    const window = 5;
+    const count = frames.length;
+    const isPeak = centroid.map((v, i) => {
+      if (count < window * 2 + 1) return false;
+      for (let d = -window; d <= window; d++) {
+        if (d === 0) continue;
+        const other = centroid[(i + d + count) % count];
+        if (other > v || (d < 0 && other === v)) return false;
+      }
+      return true;
+    });
+
+    const peaks = isPeak.filter(Boolean).length;
+    let beat = 0;
+    let time = 0;
+    return frames.map((f, i) => {
+      if (peaks >= 2) {
+        if (isPeak[i]) beat++;
+      } else {
+        beat = Math.floor(time / 500);
+      }
+      time += f.delay;
+      return beat;
+    });
+  }
+
+  // --- From lib/gif.js, using plain byte arrays instead of Buffer ------------
+
+  function decodeGif(buf) {
+    const u16 = (o) => buf[o] | (buf[o + 1] << 8);
+    const sig = String.fromCharCode(...buf.subarray(0, 6));
+    if (sig !== 'GIF87a' && sig !== 'GIF89a') throw new Error('not a GIF file');
+
+    const width = u16(6);
+    const height = u16(8);
+    const screenFlags = buf[10];
+    let pos = 13;
+
+    let globalPalette = null;
+    if (screenFlags & 0x80) {
+      const size = 3 * (1 << ((screenFlags & 7) + 1));
+      globalPalette = buf.subarray(pos, pos + size);
+      pos += size;
+    }
+
+    const canvas = new Uint8Array(width * height * 4);
+    const frames = [];
+    let gce = { disposal: 0, delay: 0, transparent: -1 };
+
+    const readSubBlocks = () => {
+      const chunks = [];
+      let total = 0;
+      while (pos < buf.length) {
+        const len = buf[pos++];
+        if (len === 0) break;
+        chunks.push(buf.subarray(pos, pos + len));
+        total += len;
+        pos += len;
+      }
+      const out = new Uint8Array(total);
+      let o = 0;
+      for (const chunk of chunks) {
+        out.set(chunk, o);
+        o += chunk.length;
+      }
+      return out;
+    };
+
+    while (pos < buf.length) {
+      const block = buf[pos++];
+      if (block === 0x3b) break;
+
+      if (block === 0x21) {
+        const label = buf[pos++];
+        const data = readSubBlocks();
+        if (label === 0xf9) {
+          gce = {
+            disposal: (data[0] >> 2) & 7,
+            delay: (data[1] | (data[2] << 8)) * 10,
+            transparent: data[0] & 1 ? data[3] : -1,
+          };
+        }
+        continue;
+      }
+
+      if (block !== 0x2c) throw new Error(`unexpected GIF block 0x${block.toString(16)}`);
+
+      const left = u16(pos);
+      const top = u16(pos + 2);
+      const w = u16(pos + 4);
+      const h = u16(pos + 6);
+      const flags = buf[pos + 8];
+      pos += 9;
+
+      let palette = globalPalette;
+      if (flags & 0x80) {
+        const size = 3 * (1 << ((flags & 7) + 1));
+        palette = buf.subarray(pos, pos + size);
+        pos += size;
+      }
+      if (!palette) throw new Error('GIF frame has no palette');
+
+      const minCodeSize = buf[pos++];
+      const indices = lzwDecode(minCodeSize, readSubBlocks(), w * h);
+      const rowOrder = flags & 0x40 ? interlacedRows(h) : null;
+      const saved = gce.disposal === 3 ? canvas.slice() : null;
+
+      for (let row = 0; row < h; row++) {
+        const y = top + (rowOrder ? rowOrder[row] : row);
+        if (y >= height) continue;
+        for (let col = 0; col < w; col++) {
+          const x = left + col;
+          if (x >= width) continue;
+          const idx = indices[row * w + col];
+          if (idx === gce.transparent) continue;
+          const o = (y * width + x) * 4;
+          canvas[o] = palette[idx * 3];
+          canvas[o + 1] = palette[idx * 3 + 1];
+          canvas[o + 2] = palette[idx * 3 + 2];
+          canvas[o + 3] = 255;
+        }
+      }
+
+      frames.push({ pixels: canvas.slice(), delay: gce.delay < 20 ? 100 : gce.delay });
+
+      if (gce.disposal === 2) {
+        for (let y = top; y < Math.min(top + h, height); y++) {
+          const start = (y * width + left) * 4;
+          const end = (y * width + Math.min(left + w, width)) * 4;
+          canvas.fill(0, start, end);
+        }
+      } else if (saved) {
+        canvas.set(saved);
+      }
+
+      gce = { disposal: 0, delay: 0, transparent: -1 };
+    }
+
+    if (frames.length === 0) throw new Error('GIF has no frames');
+    return { width, height, frames };
+  }
+
+  function interlacedRows(h) {
+    const rows = [];
+    for (const [start, step] of [[0, 8], [4, 8], [2, 4], [1, 2]]) {
+      for (let y = start; y < h; y += step) rows.push(y);
+    }
+    return rows;
+  }
+
+  function lzwDecode(minCodeSize, data, pixelCount) {
+    const out = new Uint8Array(pixelCount);
+    const clearCode = 1 << minCodeSize;
+    const eoiCode = clearCode + 1;
+    const prefix = new Uint16Array(4096);
+    const suffix = new Uint8Array(4096);
+    const stack = new Uint8Array(4097);
+
+    let codeSize = minCodeSize + 1;
+    let codeMask = (1 << codeSize) - 1;
+    let nextCode = eoiCode + 1;
+    let prev = -1;
+    let first = 0;
+    let datum = 0;
+    let bits = 0;
+    let op = 0;
+
+    for (let i = 0; i < data.length && op < pixelCount; i++) {
+      datum |= data[i] << bits;
+      bits += 8;
+
+      while (bits >= codeSize && op < pixelCount) {
+        const code = datum & codeMask;
+        datum >>>= codeSize;
+        bits -= codeSize;
+
+        if (code === clearCode) {
+          codeSize = minCodeSize + 1;
+          codeMask = (1 << codeSize) - 1;
+          nextCode = eoiCode + 1;
+          prev = -1;
+          continue;
+        }
+        if (code === eoiCode) return out;
+
+        if (prev === -1) {
+          out[op++] = code;
+          prev = first = code;
+          continue;
+        }
+        if (code > nextCode) return out;
+
+        let sp = 0;
+        let c = code;
+        if (code === nextCode) {
+          stack[sp++] = first;
+          c = prev;
+        }
+        while (c > eoiCode) {
+          stack[sp++] = suffix[c];
+          c = prefix[c];
+        }
+        first = c;
+        stack[sp++] = c;
+        while (sp > 0 && op < pixelCount) out[op++] = stack[--sp];
+
+        if (nextCode < 4096) {
+          prefix[nextCode] = prev;
+          suffix[nextCode] = first;
+          nextCode++;
+          if (nextCode === 1 << codeSize && codeSize < 12) {
+            codeSize++;
+            codeMask = (1 << codeSize) - 1;
+          }
+        }
+        prev = code;
+      }
+    }
+    return out;
+  }
+
+  update(false);
+  startPreview();
+})();
 </script>
 </body>
 </html>

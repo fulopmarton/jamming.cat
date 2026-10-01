@@ -76,6 +76,18 @@ If you host it publicly, set `MAX_STREAMS` and maybe `MAX_STREAM_SECONDS` to mat
 
 The server sends `X-Accel-Buffering: no`, so nginx streams frames without extra config. For other proxies, turn off response buffering for this upstream, or the cat will stutter or never show up.
 
+With Caddy, disable buffering with `flush_interval -1`:
+
+```caddyfile
+jamming.cat {
+	reverse_proxy 127.0.0.1:3000 {
+		flush_interval -1
+	}
+}
+```
+
+Note that `curl jamming.cat` hits port 80, and curl does not follow redirects without `-L`. If you terminate TLS at a proxy, serve terminal clients over plain HTTP rather than redirecting them to HTTPS, or `curl jamming.cat` returns an empty 308 and no cat.
+
 ## Credits
 
 The GIF is the "catJAM" emoji of the Vibing Cat meme, from [emoji.gg](https://emoji.gg/emoji/5498_catJAM). Inspired by [parrot.live](https://github.com/hugomd/parrot.live).

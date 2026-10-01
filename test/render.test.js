@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { decodeGif } from '../lib/gif.js';
-import { createRenderer, beatIndices, HOME, RESET } from '../lib/render.js';
+import { createRenderer, beatIndices, HOME, RESET, TRAILER } from '../lib/render.js';
 
 const gif = decodeGif(fs.readFileSync(new URL('../assets/catjam.gif', import.meta.url)));
 const getFrames = createRenderer(gif);
@@ -18,10 +18,11 @@ for (const mode of ['truecolor', '256', 'ascii']) {
       for (const { data, delay } of frames) {
         const text = data.toString();
         assert.ok(text.startsWith(HOME));
-        assert.ok(text.endsWith(RESET));
+        assert.ok(text.endsWith(RESET + TRAILER));
         assert.ok(!/(?<!\r)\n/.test(text), 'every line feed has a carriage return');
         const lines = visibleLines(data);
-        assert.equal(lines.length, size / 2);
+        assert.equal(lines.length, size / 2 + 2, 'artwork rows plus two blank lines');
+        assert.ok(lines.slice(-2).every((line) => line === ''), 'frame ends with blank lines');
         assert.ok(lines.every((line) => [...line].length <= size));
         assert.equal(delay, 40);
       }
