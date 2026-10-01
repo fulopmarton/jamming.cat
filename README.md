@@ -88,6 +88,12 @@ jamming.cat {
 
 Note that `curl jamming.cat` hits port 80, and curl does not follow redirects without `-L`. If you terminate TLS at a proxy, serve terminal clients over plain HTTP rather than redirecting them to HTTPS, or `curl jamming.cat` returns an empty 308 and no cat.
 
+## Continuous deployment
+
+Every push to `main` runs the tests, then [.github/workflows/deploy.yml](.github/workflows/deploy.yml) ships the commit to the Oracle VM over SSH. [scripts/deploy.sh](scripts/deploy.sh) builds the Docker image on the VM (it's ARM, so building there avoids cross-compiling), replaces the `jamming-cat` container on `127.0.0.1:3000`, and waits for `/healthz`. If `PUBLIC_URL` is set, the workflow then checks `$PUBLIC_URL/healthz`. You can also start it by hand from the Actions tab.
+
+Secrets: `DEPLOY_HOST`, `DEPLOY_USER`, `DEPLOY_SSH_KEY` (private key for that user), and optionally `DEPLOY_KNOWN_HOSTS` (the VM's host key line). Variable: `PUBLIC_URL` (optional). Runtime settings like `MAX_STREAMS` go in `~/jamming.cat-deploy/.env` on the VM.
+
 ## Credits
 
 The GIF is the "catJAM" emoji of the Vibing Cat meme, from [emoji.gg](https://emoji.gg/emoji/5498_catJAM). Inspired by [parrot.live](https://github.com/hugomd/parrot.live).
