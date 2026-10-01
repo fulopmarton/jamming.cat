@@ -1,0 +1,86 @@
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# Never run two deploys at once; a newer push waits for the current one.
+concurrency:
+  group: deploy-production
+  cancel-in-progress: false
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm test
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+      DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+      PUBLIC_URL: ${{ vars.PUBLIC_URL }}
+      REMOTE_DIR: jamming.cat-deploy
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          missing=0
+          for name in DEPLOY_HOST DEPLOY_USER SSH_KEY; do
+            if [ -z "${!name}" ]; then
+              echo "::error::$name is not set (add it under Settings → Secrets and variables → Actions)"
+              missing=1
+            fi
+          done
+          [ "$missing" = 0 ] || exit 1
+          mkdir -p ~/.ssh && chmod 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/id_deploy
+          chmod 600 ~/.ssh/id_deploy
+          if [ -n "$KNOWN_HOSTS" ]; then
+            printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          else
+            echo "::warning::DEPLOY_KNOWN_HOSTS not set, trusting the host key from ssh-keyscan"
+            ssh-keyscan -T 15 "$DEPLOY_HOST" > ~/.ssh/known_hosts
+          fi
+          cat > ~/.ssh/config <<EOF
+          Host server
+            HostName $DEPLOY_HOST
+            User $DEPLOY_USER
+            IdentityFile ~/.ssh/id_deploy
+            IdentitiesOnly yes
+            StrictHostKeyChecking yes
+            ServerAliveInterval 30
+          EOF
+
+      - name: Upload source
+        run: |
+          ssh server "rm -rf ~/$REMOTE_DIR/incoming && mkdir -p ~/$REMOTE_DIR/incoming"
+          git archive --format=tar HEAD | ssh server "tar -x -C ~/$REMOTE_DIR/incoming"
+
+      - name: Build and restart on the server
+        run: ssh server "bash ~/$REMOTE_DIR/incoming/scripts/deploy.sh ${GITHUB_SHA::12}"
+
+      - name: Check the public site
+        if: env.PUBLIC_URL != ''
+        run: |
+          for i in $(seq 1 10); do
+            if body=$(curl -fsS --max-time 5 "$PUBLIC_URL/healthz"); then
+              echo "$PUBLIC_URL/healthz -> $body"
+              exit 0
+            fi
+            sleep 3
+          done
+          echo "::error::$PUBLIC_URL/healthz did not respond after deploy"
+          exit 1
